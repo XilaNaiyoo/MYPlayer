@@ -47,30 +47,39 @@ class Playlist {
   /// 添加歌曲到歌单
   void addSong(int songId) {
     if (!songIds.contains(songId)) {
-      songIds.add(songId);
+      final mutableList = List<int>.from(songIds);
+      mutableList.add(songId);
+      songIds = mutableList;
       updatedAt = DateTime.now();
     }
   }
 
   /// 添加多首歌曲到歌单
   void addSongs(List<int> ids) {
+    // 确保 songIds 是可变列表（Isar 读取的可能是不可变列表）
+    final mutableList = List<int>.from(songIds);
     for (final id in ids) {
-      if (!songIds.contains(id)) {
-        songIds.add(id);
+      if (!mutableList.contains(id)) {
+        mutableList.add(id);
       }
     }
+    songIds = mutableList;
     updatedAt = DateTime.now();
   }
 
   /// 从歌单移除歌曲
   void removeSong(int songId) {
-    songIds.remove(songId);
+    final mutableList = List<int>.from(songIds);
+    mutableList.remove(songId);
+    songIds = mutableList;
     updatedAt = DateTime.now();
   }
 
   /// 从歌单移除多首歌曲
   void removeSongs(List<int> ids) {
-    songIds.removeWhere((id) => ids.contains(id));
+    final mutableList = List<int>.from(songIds);
+    mutableList.removeWhere((id) => ids.contains(id));
+    songIds = mutableList;
     updatedAt = DateTime.now();
   }
 
@@ -79,8 +88,10 @@ class Playlist {
     if (oldIndex < 0 || oldIndex >= songIds.length) return;
     if (newIndex < 0 || newIndex >= songIds.length) return;
 
-    final songId = songIds.removeAt(oldIndex);
-    songIds.insert(newIndex, songId);
+    final mutableList = List<int>.from(songIds);
+    final songId = mutableList.removeAt(oldIndex);
+    mutableList.insert(newIndex, songId);
+    songIds = mutableList;
     updatedAt = DateTime.now();
   }
 }

@@ -138,12 +138,16 @@ final currentViewTypeProvider = Provider<NavViewType>((ref) {
   return ref.watch(navigationProvider).viewType;
 });
 
-/// 是否可以后退 Provider
+/// 是否可以后退 Provider - 监听导航状态变化
 final canGoBackProvider = Provider<bool>((ref) {
-  return ref.watch(navigationProvider.notifier).canGoBack;
+  // 先监听状态变化，确保 Provider 会重新计算
+  ref.watch(navigationProvider);
+  return ref.read(navigationProvider.notifier).canGoBack;
 });
 
-/// 是否可以前进 Provider
+/// 是否可以前进 Provider - 监听导航状态变化
 final canGoForwardProvider = Provider<bool>((ref) {
-  return ref.watch(navigationProvider.notifier).canGoForward;
+  // 先监听状态变化，确保 Provider 会重新计算
+  ref.watch(navigationProvider);
+  return ref.read(navigationProvider.notifier).canGoForward;
 });

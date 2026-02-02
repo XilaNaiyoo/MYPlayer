@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/song_repository.dart';
 import '../../providers/providers.dart';
+import '../../providers/navigation_provider.dart';
 import '../theme/app_theme.dart';
 
 /// 艺术家视图 - 以列表形式显示艺术家
@@ -55,7 +56,7 @@ class ArtistView extends ConsumerWidget {
               if (artists.isEmpty) {
                 return _buildEmptyState();
               }
-              return _buildArtistList(context, artists);
+              return _buildArtistList(context, ref, artists);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
@@ -101,23 +102,34 @@ class ArtistView extends ConsumerWidget {
   }
 
   /// 构建艺术家列表
-  Widget _buildArtistList(BuildContext context, List<ArtistInfo> artists) {
+  Widget _buildArtistList(
+    BuildContext context,
+    WidgetRef ref,
+    List<ArtistInfo> artists,
+  ) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: artists.length,
       itemBuilder: (context, index) {
-        return _buildArtistItem(context, artists[index]);
+        return _buildArtistItem(context, ref, artists[index]);
       },
     );
   }
 
   /// 构建单个艺术家项
-  Widget _buildArtistItem(BuildContext context, ArtistInfo artist) {
+  Widget _buildArtistItem(
+    BuildContext context,
+    WidgetRef ref,
+    ArtistInfo artist,
+  ) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // TODO: 导航到艺术家详情页
+          // 导航到艺术家详情页
+          ref
+              .read(navigationProvider.notifier)
+              .navigateToDetail(NavViewType.artists, artist.name);
         },
         borderRadius: BorderRadius.circular(8),
         hoverColor: AppTheme.hoverColor,

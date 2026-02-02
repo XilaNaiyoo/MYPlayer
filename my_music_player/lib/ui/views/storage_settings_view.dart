@@ -262,7 +262,9 @@ class StorageSettingsView extends ConsumerWidget {
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
         title: const Text('移除文件夹'),
-        content: Text('确定要移除「${folder.displayName}」吗？\n这不会删除实际的音乐文件。'),
+        content: Text(
+          '确定要移除「${folder.displayName}」吗？\n这不会删除实际的音乐文件，但会从音乐库中移除相关歌曲。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -277,9 +279,15 @@ class StorageSettingsView extends ConsumerWidget {
     );
 
     if (confirm == true) {
+      // 先删除该文件夹路径下的所有歌曲
+      final songRepo = ref.read(songRepositoryProvider);
+      await songRepo.deleteSongsByFolder(folder.path);
+
+      // 再删除文件夹记录
       final folderRepo = ref.read(libraryFolderRepositoryProvider);
       await folderRepo.removeFolder(folder.id);
-      // 刷新列表
+
+      // 刷新列表 - 这会刷新所有相关视图
       ref.read(libraryRefreshProvider.notifier).refresh();
     }
   }

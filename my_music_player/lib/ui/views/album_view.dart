@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/song_repository.dart';
 import '../../providers/providers.dart';
+import '../../providers/navigation_provider.dart';
 import '../theme/app_theme.dart';
 
 /// 专辑视图 - 以网格形式显示专辑封面
@@ -72,7 +73,7 @@ class AlbumView extends ConsumerWidget {
               if (albums.isEmpty) {
                 return _buildEmptyState(context);
               }
-              return _buildAlbumGrid(context, albums);
+              return _buildAlbumGrid(context, ref, albums);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
@@ -118,29 +119,40 @@ class AlbumView extends ConsumerWidget {
   }
 
   /// 构建专辑网格
-  Widget _buildAlbumGrid(BuildContext context, List<AlbumInfo> albums) {
+  Widget _buildAlbumGrid(
+    BuildContext context,
+    WidgetRef ref,
+    List<AlbumInfo> albums,
+  ) {
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 200,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.8, // 封面 + 文字
+        childAspectRatio: 0.8,
       ),
       itemCount: albums.length,
       itemBuilder: (context, index) {
-        return _buildAlbumCard(context, albums[index]);
+        return _buildAlbumCard(context, ref, albums[index]);
       },
     );
   }
 
   /// 构建单个专辑卡片
-  Widget _buildAlbumCard(BuildContext context, AlbumInfo album) {
+  Widget _buildAlbumCard(BuildContext context, WidgetRef ref, AlbumInfo album) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // TODO: 导航到专辑详情页
+          // 导航到专辑详情页
+          ref
+              .read(navigationProvider.notifier)
+              .navigateToDetail(
+                NavViewType.albums,
+                album.name,
+                title: album.artist,
+              );
         },
         borderRadius: BorderRadius.circular(8),
         hoverColor: AppTheme.hoverColor,

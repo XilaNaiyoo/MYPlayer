@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../providers/navigation_provider.dart';
 import '../theme/app_theme.dart';
 
 /// 顶部控制栏 - 负责窗口管理与视图历史导航
-class TopControlBar extends StatelessWidget {
+class TopControlBar extends ConsumerWidget {
   /// 侧边栏是否展开
   final bool isSidebarExpanded;
 
@@ -18,7 +20,11 @@ class TopControlBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 监听导航状态
+    final canGoBack = ref.watch(canGoBackProvider);
+    final canGoForward = ref.watch(canGoForwardProvider);
+
     return GestureDetector(
       // 顶部栏空白区域可拖拽移动窗口
       behavior: HitTestBehavior.translucent,
@@ -39,16 +45,20 @@ class TopControlBar extends StatelessWidget {
             _buildIconButton(
               icon: Icons.arrow_back,
               tooltip: '后退',
-              onPressed: null, // TODO: 实现导航历史
-              enabled: false,
+              onPressed: canGoBack
+                  ? () => ref.read(navigationProvider.notifier).goBack()
+                  : null,
+              enabled: canGoBack,
             ),
 
             // 导航前进按钮
             _buildIconButton(
               icon: Icons.arrow_forward,
               tooltip: '前进',
-              onPressed: null, // TODO: 实现导航历史
-              enabled: false,
+              onPressed: canGoForward
+                  ? () => ref.read(navigationProvider.notifier).goForward()
+                  : null,
+              enabled: canGoForward,
             ),
 
             const SizedBox(width: 16),

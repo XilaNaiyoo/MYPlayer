@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/playlist.dart';
 import '../../providers/providers.dart';
+import '../../providers/navigation_provider.dart';
 import '../theme/app_theme.dart';
 
 /// 歌单视图 - 显示和管理歌单
@@ -147,7 +148,14 @@ class PlaylistView extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // TODO: 导航到歌单详情页
+          // 导航到歌单详情页
+          ref
+              .read(navigationProvider.notifier)
+              .navigateToDetail(
+                NavViewType.playlists,
+                playlist.id.toString(),
+                title: playlist.name,
+              );
         },
         borderRadius: BorderRadius.circular(8),
         hoverColor: AppTheme.hoverColor,

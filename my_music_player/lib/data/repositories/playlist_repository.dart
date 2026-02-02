@@ -91,12 +91,20 @@ class PlaylistRepository {
 
   /// 添加歌曲到歌单
   Future<bool> addSongsToPlaylist(int playlistId, List<int> songIds) async {
+    print('=== addSongsToPlaylist 开始 ===');
+    print('歌单ID: $playlistId, 要添加的歌曲IDs: $songIds');
     return await _isar.writeTxn(() async {
       final playlist = await _playlists.get(playlistId);
-      if (playlist == null) return false;
+      if (playlist == null) {
+        print('错误: 歌单不存在');
+        return false;
+      }
 
+      print('添加前 songIds: ${playlist.songIds}');
       playlist.addSongs(songIds);
+      print('添加后 songIds: ${playlist.songIds}');
       await _playlists.put(playlist);
+      print('=== addSongsToPlaylist 完成 ===');
       return true;
     });
   }

@@ -8,6 +8,8 @@ import '../widgets/sidebar.dart';
 import '../widgets/bottom_player_bar.dart';
 import '../views/album_view.dart';
 import '../views/album_detail_view.dart';
+import '../views/artist_detail_view.dart';
+import '../views/playlist_detail_view.dart';
 import '../views/storage_settings_view.dart';
 import '../views/artist_view.dart';
 import '../views/folder_view.dart';
@@ -173,13 +175,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           artistName: route.title ?? '',
         );
       case NavViewType.artists:
-        // 艺术家详情页 - TODO
-        return _buildPlaceholderView('艺术家: ${route.detailId}', Icons.person);
+        // 艺术家详情页
+        return ArtistDetailView(artistName: route.detailId!);
       case NavViewType.playlists:
-        // 歌单详情页 - TODO
-        return _buildPlaceholderView(
-          '歌单: ${route.detailId}',
-          Icons.queue_music,
+        // 歌单详情页
+        return PlaylistDetailView(
+          playlistId: int.tryParse(route.detailId!) ?? 0,
+          playlistName: route.title ?? '',
         );
       default:
         return _buildPlaceholderView('详情', Icons.info);
