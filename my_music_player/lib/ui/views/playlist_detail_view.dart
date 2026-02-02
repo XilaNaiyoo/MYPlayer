@@ -5,9 +5,10 @@ import '../../data/models/song.dart';
 import '../../data/repositories/playlist_repository.dart';
 import '../../providers/providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/batch_edit_dialog.dart';
 
 /// 歌单详情页 - 显示歌单内的歌曲列表
-class PlaylistDetailView extends ConsumerWidget {
+class PlaylistDetailView extends ConsumerStatefulWidget {
   final int playlistId;
   final String playlistName;
 
@@ -18,15 +19,29 @@ class PlaylistDetailView extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlaylistDetailView> createState() => _PlaylistDetailViewState();
+}
+
+class _PlaylistDetailViewState extends ConsumerState<PlaylistDetailView> {
+  // 是否处于多选模式
+  bool _isSelectMode = false;
+  // 选中的歌曲ID集合
+  final Set<int> _selectedIds = {};
+
+  @override
+  Widget build(BuildContext context) {
     // 获取歌单详情（含歌曲）
-    final playlistAsync = ref.watch(playlistDetailProvider(playlistId));
+    final playlistAsync = ref.watch(playlistDetailProvider(widget.playlistId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 歌单头部信息
         _buildHeader(context, ref, playlistAsync),
+
+        // 多选模式工具栏
+        if (_isSelectMode)
+          _buildSelectionToolbar(playlistAsync.valueOrNull?.songs ?? []),
 
         // 歌曲列表
         Expanded(
@@ -58,14 +73,89 @@ class PlaylistDetailView extends ConsumerWidget {
     );
   }
 
+  /// 构建多选工具栏
+  Widget _buildSelectionToolbar(List<Song> allSongs) {
+    final selectedCount = _selectedIds.length;
+    final selectedSongs = allSongs
+        .where((s) => _selectedIds.contains(s.id))
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        border: const Border(bottom: BorderSide(color: AppTheme.dividerColor)),
+      ),
+      child: Row(
+        children: [
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                if (_selectedIds.length == allSongs.length) {
+                  _selectedIds.clear();
+                } else {
+                  _selectedIds.addAll(allSongs.map((s) => s.id));
+                }
+              });
+            },
+            icon: Icon(
+              _selectedIds.length == allSongs.length
+                  ? Icons.check_box
+                  : Icons.check_box_outline_blank,
+              size: 20,
+            ),
+            label: Text(_selectedIds.length == allSongs.length ? '取消全选' : '全选'),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            '已选择 $selectedCount 首',
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+          const Spacer(),
+          ElevatedButton.icon(
+            onPressed: selectedCount > 0
+                ? () => _showBatchEditDialog(selectedSongs)
+                : null,
+            icon: const Icon(Icons.edit, size: 18),
+            label: const Text('编辑'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: () {
+              setState(() {
+                _isSelectMode = false;
+                _selectedIds.clear();
+              });
+            },
+            child: const Text('完成'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示批量编辑对话框
+  Future<void> _showBatchEditDialog(List<Song> songs) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => BatchEditDialog(songs: songs),
+    );
+    if (result == true) {
+      setState(() {
+        _isSelectMode = false;
+        _selectedIds.clear();
+      });
+    }
+  }
+
   /// 构建歌单头部
   Widget _buildHeader(
     BuildContext context,
     WidgetRef ref,
     AsyncValue<PlaylistWithSongs?> playlistAsync,
   ) {
-    final songCount =
-        playlistAsync.whenData((d) => d?.songs.length ?? 0).value ?? 0;
+    final songs = playlistAsync.valueOrNull?.songs ?? [];
+    final songCount = songs.length;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -108,7 +198,7 @@ class PlaylistDetailView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  playlistName,
+                  widget.playlistName,
                   style: const TextStyle(
                     color: AppTheme.textPrimary,
                     fontSize: 32,
@@ -125,16 +215,10 @@ class PlaylistDetailView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 // 操作按钮
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
+                Row(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: songCount > 0
-                          ? () {
-                              // TODO: 播放歌单
-                            }
-                          : null,
+                      onPressed: songCount > 0 ? () {} : null,
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('播放'),
                       style: ElevatedButton.styleFrom(
@@ -144,21 +228,30 @@ class PlaylistDetailView extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     OutlinedButton.icon(
-                      onPressed: songCount > 0
-                          ? () {
-                              // TODO: 随机播放
-                            }
-                          : null,
+                      onPressed: songCount > 0 ? () {} : null,
                       icon: const Icon(Icons.shuffle),
                       label: const Text('随机播放'),
                     ),
-                    // 添加歌曲按钮
+                    const SizedBox(width: 12),
                     OutlinedButton.icon(
                       onPressed: () => _showAddSongsDialog(context, ref),
                       icon: const Icon(Icons.add),
                       label: const Text('添加歌曲'),
                     ),
+                    const Spacer(),
+                    if (songs.isNotEmpty && !_isSelectMode)
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _isSelectMode = true;
+                            _selectedIds.clear();
+                          });
+                        },
+                        icon: const Icon(Icons.checklist, size: 20),
+                        label: const Text('批量编辑'),
+                      ),
                   ],
                 ),
               ],
@@ -208,26 +301,35 @@ class PlaylistDetailView extends ConsumerWidget {
   Future<void> _showAddSongsDialog(BuildContext context, WidgetRef ref) async {
     await showDialog(
       context: context,
-      builder: (context) =>
-          _AddSongsDialog(playlistId: playlistId, playlistName: playlistName),
+      builder: (context) => _AddSongsDialog(
+        playlistId: widget.playlistId,
+        playlistName: widget.playlistName,
+      ),
     );
   }
 
   /// 构建歌曲列表
   Widget _buildSongList(BuildContext context, WidgetRef ref, List<Song> songs) {
+    // 多选模式下使用普通 ListView，否则用 ReorderableListView
+    if (_isSelectMode) {
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: songs.length,
+        itemBuilder: (context, index) {
+          return _buildSongItem(context, ref, songs[index], index);
+        },
+      );
+    }
+
     return ReorderableListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: songs.length,
-      // 禁用默认拖拽手柄
       buildDefaultDragHandles: false,
       onReorder: (oldIndex, newIndex) async {
-        // ReorderableListView 的 newIndex 逻辑：如果向下移动，newIndex 会多 1
-        if (newIndex > oldIndex) {
-          newIndex -= 1;
-        }
+        if (newIndex > oldIndex) newIndex -= 1;
         await ref
             .read(playlistActionsProvider)
-            .reorderSongs(playlistId, oldIndex, newIndex);
+            .reorderSongs(widget.playlistId, oldIndex, newIndex);
       },
       itemBuilder: (context, index) {
         return _buildSongItem(context, ref, songs[index], index);
@@ -242,12 +344,26 @@ class PlaylistDetailView extends ConsumerWidget {
     Song song,
     int index,
   ) {
+    final isSelected = _selectedIds.contains(song.id);
+
     return Material(
       key: ValueKey(song.id),
-      color: Colors.transparent,
+      color: isSelected
+          ? AppTheme.primaryColor.withValues(alpha: 0.1)
+          : Colors.transparent,
       child: InkWell(
         onTap: () {
-          // TODO: 播放歌曲
+          if (_isSelectMode) {
+            setState(() {
+              if (isSelected) {
+                _selectedIds.remove(song.id);
+              } else {
+                _selectedIds.add(song.id);
+              }
+            });
+          } else {
+            // TODO: 播放歌曲
+          }
         },
         borderRadius: BorderRadius.circular(4),
         hoverColor: AppTheme.hoverColor,
@@ -255,18 +371,33 @@ class PlaylistDetailView extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              // 拖拽手柄（使用 ReorderableDragStartListener 启用拖拽）
-              ReorderableDragStartListener(
-                index: index,
-                child: const MouseRegion(
-                  cursor: SystemMouseCursors.grab,
-                  child: Icon(
-                    Icons.drag_handle,
-                    color: AppTheme.textDisabled,
-                    size: 20,
+              // 多选模式显示复选框，否则显示拖拽手柄
+              if (_isSelectMode)
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (v) {
+                    setState(() {
+                      if (v == true) {
+                        _selectedIds.add(song.id);
+                      } else {
+                        _selectedIds.remove(song.id);
+                      }
+                    });
+                  },
+                  activeColor: AppTheme.primaryColor,
+                )
+              else
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: Icon(
+                      Icons.drag_handle,
+                      color: AppTheme.textDisabled,
+                      size: 20,
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(width: 8),
               // 序号
               SizedBox(
@@ -317,28 +448,34 @@ class PlaylistDetailView extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // 更多操作
-              PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_horiz,
-                  color: AppTheme.textDisabled,
-                  size: 20,
-                ),
-                onSelected: (value) async {
-                  if (value == 'remove') {
-                    await ref
-                        .read(playlistActionsProvider)
-                        .removeSongsFromPlaylist(playlistId, [song.id]);
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'play_next', child: Text('下一首播放')),
-                  const PopupMenuItem(
-                    value: 'remove',
-                    child: Text('从歌单移除', style: TextStyle(color: Colors.red)),
+              // 更多操作（多选模式下隐藏）
+              if (!_isSelectMode)
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_horiz,
+                    color: AppTheme.textDisabled,
+                    size: 20,
                   ),
-                ],
-              ),
+                  onSelected: (value) async {
+                    if (value == 'remove') {
+                      await ref
+                          .read(playlistActionsProvider)
+                          .removeSongsFromPlaylist(widget.playlistId, [
+                            song.id,
+                          ]);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'play_next',
+                      child: Text('下一首播放'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'remove',
+                      child: Text('从歌单移除', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -406,7 +543,6 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
               ],
             ),
             const SizedBox(height: 16),
-
             // 搜索框
             TextField(
               decoration: InputDecoration(
@@ -424,15 +560,10 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                 ),
               ),
               style: const TextStyle(color: AppTheme.textPrimary),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
+              onChanged: (value) =>
+                  setState(() => _searchQuery = value.toLowerCase()),
             ),
             const SizedBox(height: 8),
-
-            // 已选中数量
             Text(
               '已选中 ${_selectedSongIds.length} 首歌曲',
               style: const TextStyle(
@@ -441,17 +572,13 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
               ),
             ),
             const SizedBox(height: 8),
-
             // 歌曲列表
             Expanded(
               child: allSongsAsync.when(
                 data: (songs) {
-                  // 过滤掉已在歌单中的歌曲
                   var availableSongs = songs
                       .where((s) => !existingSongIds.contains(s.id))
                       .toList();
-
-                  // 搜索过滤
                   if (_searchQuery.isNotEmpty) {
                     availableSongs = availableSongs.where((s) {
                       return s.title.toLowerCase().contains(_searchQuery) ||
@@ -459,7 +586,6 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                           s.album.toLowerCase().contains(_searchQuery);
                     }).toList();
                   }
-
                   if (availableSongs.isEmpty) {
                     return const Center(
                       child: Text(
@@ -468,13 +594,11 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                       ),
                     );
                   }
-
                   return ListView.builder(
                     itemCount: availableSongs.length,
                     itemBuilder: (context, index) {
                       final song = availableSongs[index];
                       final isSelected = _selectedSongIds.contains(song.id);
-
                       return Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -494,7 +618,6 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                             ),
                             child: Row(
                               children: [
-                                // 复选框
                                 Checkbox(
                                   value: isSelected,
                                   onChanged: (value) {
@@ -509,7 +632,6 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                                   activeColor: AppTheme.primaryColor,
                                 ),
                                 const SizedBox(width: 8),
-                                // 歌曲信息
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -536,7 +658,6 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                                     ],
                                   ),
                                 ),
-                                // 时长
                                 Text(
                                   song.formattedDuration,
                                   style: const TextStyle(
@@ -556,14 +677,11 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                 error: (error, stack) => Center(child: Text('加载失败: $error')),
               ),
             ),
-
             const SizedBox(height: 16),
-
             // 底部按钮
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // 全选按钮
                 TextButton(
                   onPressed: () {
                     final allSongs =
@@ -576,11 +694,9 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                             .map((s) => s.id)
                             .toSet() ??
                         <int>{};
-                    // 先过滤掉已有的歌曲
                     var availableSongs = allSongs
                         .where((s) => !existingIds.contains(s.id))
                         .toList();
-                    // 再应用搜索过滤（修复 bug：全选应只选中过滤后的歌曲）
                     if (_searchQuery.isNotEmpty) {
                       availableSongs = availableSongs.where((s) {
                         return s.title.toLowerCase().contains(_searchQuery) ||
@@ -590,15 +706,12 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                     }
                     final filteredIds = availableSongs.map((s) => s.id).toSet();
                     setState(() {
-                      // 检查当前选中的是否包含所有过滤后的歌曲
                       final allSelected = filteredIds.every(
                         (id) => _selectedSongIds.contains(id),
                       );
                       if (allSelected && filteredIds.isNotEmpty) {
-                        // 取消选中过滤后的歌曲
                         _selectedSongIds.removeAll(filteredIds);
                       } else {
-                        // 选中所有过滤后的歌曲
                         _selectedSongIds.addAll(filteredIds);
                       }
                     });
@@ -614,20 +727,16 @@ class _AddSongsDialogState extends ConsumerState<_AddSongsDialog> {
                 ElevatedButton(
                   onPressed: _selectedSongIds.isNotEmpty
                       ? () async {
-                          // 添加选中的歌曲
                           await ref
                               .read(playlistActionsProvider)
                               .addSongsToPlaylist(
                                 widget.playlistId,
                                 _selectedSongIds.toList(),
                               );
-                          // 强制刷新歌单详情（修复 bug：添加后数据不显示）
                           ref.invalidate(
                             playlistDetailProvider(widget.playlistId),
                           );
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                          }
+                          if (context.mounted) Navigator.pop(context);
                         }
                       : null,
                   child: Text('添加 ${_selectedSongIds.length} 首'),
@@ -646,7 +755,6 @@ final playlistDetailProvider = FutureProvider.family<PlaylistWithSongs?, int>((
   ref,
   playlistId,
 ) async {
-  // 监听刷新状态
   ref.watch(libraryRefreshProvider);
   final playlistRepo = ref.watch(playlistRepositoryProvider);
   return await playlistRepo.getPlaylistWithSongs(playlistId);

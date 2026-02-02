@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/library_folder.dart';
 import '../../providers/providers.dart';
+import '../../providers/navigation_provider.dart';
 import '../theme/app_theme.dart';
 
 /// 文件夹视图 - 按文件夹浏览音乐
@@ -55,7 +56,7 @@ class FolderView extends ConsumerWidget {
               if (folders.isEmpty) {
                 return _buildEmptyState();
               }
-              return _buildFolderList(context, folders);
+              return _buildFolderList(context, ref, folders);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
@@ -101,23 +102,38 @@ class FolderView extends ConsumerWidget {
   }
 
   /// 构建文件夹列表
-  Widget _buildFolderList(BuildContext context, List<LibraryFolder> folders) {
+  Widget _buildFolderList(
+    BuildContext context,
+    WidgetRef ref,
+    List<LibraryFolder> folders,
+  ) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: folders.length,
       itemBuilder: (context, index) {
-        return _buildFolderItem(context, folders[index]);
+        return _buildFolderItem(context, ref, folders[index]);
       },
     );
   }
 
   /// 构建单个文件夹项
-  Widget _buildFolderItem(BuildContext context, LibraryFolder folder) {
+  Widget _buildFolderItem(
+    BuildContext context,
+    WidgetRef ref,
+    LibraryFolder folder,
+  ) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // TODO: 导航到文件夹详情页，显示该文件夹中的歌曲
+          // 导航到文件夹详情页
+          ref
+              .read(navigationProvider.notifier)
+              .navigateToDetail(
+                NavViewType.folders,
+                folder.path,
+                title: folder.displayName,
+              );
         },
         borderRadius: BorderRadius.circular(8),
         hoverColor: AppTheme.hoverColor,

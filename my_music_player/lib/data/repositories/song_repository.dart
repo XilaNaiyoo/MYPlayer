@@ -92,22 +92,50 @@ class SongRepository {
 
   // ==================== 写入操作 ====================
 
-  /// 插入或更新单首歌曲
+  /// 插入或更新单首歌曲（按 filePath 查找现有记录）
   Future<int> upsertSong(Song song) async {
     song.updatedAt = DateTime.now();
     return await _isar.writeTxn(() async {
+      // 按 filePath 查找现有记录
+      final existing = await _songs
+          .filter()
+          .filePathEqualTo(song.filePath)
+          .findFirst();
+      if (existing != null) {
+        song.id = existing.id;
+        song.createdAt = existing.createdAt;
+      }
       return await _songs.put(song);
     });
   }
 
-  /// 批量插入或更新歌曲
+  /// 批量插入或更新歌曲（按 filePath 查找现有记录）
   Future<List<int>> upsertSongs(List<Song> songs) async {
     final now = DateTime.now();
-    for (final song in songs) {
-      song.updatedAt = now;
-    }
+
     return await _isar.writeTxn(() async {
-      return await _songs.putAll(songs);
+      final ids = <int>[];
+
+      for (final song in songs) {
+        song.updatedAt = now;
+
+        // 按 filePath 查找现有记录
+        final existing = await _songs
+            .filter()
+            .filePathEqualTo(song.filePath)
+            .findFirst();
+        if (existing != null) {
+          // 保留现有记录的 ID（Isar 会更新而非插入）
+          song.id = existing.id;
+          // 保留创建时间
+          song.createdAt = existing.createdAt;
+        }
+
+        final id = await _songs.put(song);
+        ids.add(id);
+      }
+
+      return ids;
     });
   }
 

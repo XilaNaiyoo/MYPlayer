@@ -285,7 +285,7 @@ class LibraryScanService {
       album: tag?.album ?? '未知专辑',
       albumArtist: tag?.albumArtist,
       year: tag?.year,
-      durationMs: tag?.duration,
+      durationMs: tag?.duration != null ? (tag!.duration! * 1000) : null,
       // audiotags 不直接提供 bitrate 和 sampleRate，暂时设为 null
       bitrate: null,
       sampleRate: null,
