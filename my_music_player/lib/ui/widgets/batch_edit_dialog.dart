@@ -491,6 +491,7 @@ class _BatchEditDialogState extends ConsumerState<BatchEditDialog> {
     });
 
     final metadataService = MetadataService();
+    final songRepo = ref.read(songRepositoryProvider);
     final failedPaths = <String>[];
 
     // 构建要修改的元数据
@@ -512,14 +513,24 @@ class _BatchEditDialogState extends ConsumerState<BatchEditDialog> {
           : null,
     );
 
-    // 逐个写入文件
+    // 逐个写入文件并更新数据库
     for (final song in widget.songs) {
       try {
         final success = await metadataService.writeMetadata(
           song.filePath,
           metadata,
         );
-        if (!success) {
+        if (success) {
+          // 写入成功后，更新数据库中的歌曲记录
+          // 直接修改 song 对象的属性
+          if (metadata.title != null) song.title = metadata.title!;
+          if (metadata.artist != null) song.artist = metadata.artist!;
+          if (metadata.album != null) song.album = metadata.album!;
+          if (metadata.year != null) song.year = metadata.year;
+          if (metadata.coverBytes != null)
+            song.coverBytes = metadata.coverBytes;
+          await songRepo.upsertSong(song);
+        } else {
           failedPaths.add(song.filePath);
         }
       } catch (e) {
@@ -532,7 +543,7 @@ class _BatchEditDialogState extends ConsumerState<BatchEditDialog> {
       });
     }
 
-    // 刷新数据库
+    // 触发 UI 刷新
     ref.read(libraryRefreshProvider.notifier).refresh();
 
     setState(() {

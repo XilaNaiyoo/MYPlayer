@@ -413,6 +413,8 @@ final albumSongsProvider = FutureProvider.family<List<Song>, String>((
   ref,
   albumName,
 ) async {
+  // 监听刷新状态，确保元数据编辑后自动刷新
+  ref.watch(libraryRefreshProvider);
   final songRepo = ref.watch(songRepositoryProvider);
   return await songRepo.getSongsByAlbum(albumName);
 });

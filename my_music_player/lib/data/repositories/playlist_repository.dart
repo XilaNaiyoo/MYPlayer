@@ -165,6 +165,43 @@ class PlaylistRepository {
       return true;
     });
   }
+
+  /// 从所有歌单中移除指定歌曲 ID（歌曲被删除时调用）
+  Future<void> removeSongFromAllPlaylists(int songId) async {
+    return await _isar.writeTxn(() async {
+      final allPlaylists = await _playlists.where().findAll();
+      for (final playlist in allPlaylists) {
+        if (playlist.songIds.contains(songId)) {
+          // 创建可变副本（Isar 返回的列表可能是不可变的）
+          final mutableList = List<int>.from(playlist.songIds);
+          mutableList.remove(songId);
+          playlist.songIds = mutableList;
+          playlist.updatedAt = DateTime.now();
+          await _playlists.put(playlist);
+        }
+      }
+    });
+  }
+
+  /// 批量从所有歌单中移除多个歌曲 ID
+  Future<void> removeSongsFromAllPlaylists(List<int> songIds) async {
+    if (songIds.isEmpty) return;
+    return await _isar.writeTxn(() async {
+      final allPlaylists = await _playlists.where().findAll();
+      final songIdSet = songIds.toSet();
+      for (final playlist in allPlaylists) {
+        final originalLength = playlist.songIds.length;
+        // 创建可变副本（Isar 返回的列表可能是不可变的）
+        final mutableList = List<int>.from(playlist.songIds);
+        mutableList.removeWhere((id) => songIdSet.contains(id));
+        if (mutableList.length != originalLength) {
+          playlist.songIds = mutableList;
+          playlist.updatedAt = DateTime.now();
+          await _playlists.put(playlist);
+        }
+      }
+    });
+  }
 }
 
 /// 包含歌曲列表的歌单

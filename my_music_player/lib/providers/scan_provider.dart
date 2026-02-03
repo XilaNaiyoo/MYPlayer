@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/services/library_scan_service.dart';
 import 'core_providers.dart';
 import 'library_provider.dart';
+import 'playlist_provider.dart';
 
 /// 扫描状态
 class ScanState {
@@ -68,10 +69,12 @@ class ScanNotifier extends StateNotifier<ScanState> {
       final scanService = _ref.read(libraryScanServiceProvider);
       final songRepository = _ref.read(songRepositoryProvider);
       final folderRepository = _ref.read(libraryFolderRepositoryProvider);
+      final playlistRepository = _ref.read(playlistRepositoryProvider);
 
       final count = await scanService.scanAllFolders(
         songRepository: songRepository,
         folderRepository: folderRepository,
+        playlistRepository: playlistRepository,
         incremental: incremental,
         onProgress: (progress) {
           state = ScanState.scanning(progress);
@@ -82,6 +85,8 @@ class ScanNotifier extends StateNotifier<ScanState> {
 
       // 刷新音乐库数据
       _ref.read(libraryRefreshProvider.notifier).refresh();
+      // 强制刷新歌单列表（确保歌曲计数更新）
+      _ref.invalidate(playlistsProvider);
 
       return count;
     } catch (e) {
@@ -107,6 +112,7 @@ class ScanNotifier extends StateNotifier<ScanState> {
       final scanService = _ref.read(libraryScanServiceProvider);
       final songRepository = _ref.read(songRepositoryProvider);
       final folderRepository = _ref.read(libraryFolderRepositoryProvider);
+      final playlistRepository = _ref.read(playlistRepositoryProvider);
 
       int count;
       if (incremental) {
@@ -114,6 +120,7 @@ class ScanNotifier extends StateNotifier<ScanState> {
           folderPath: folderPath,
           songRepository: songRepository,
           folderRepository: folderRepository,
+          playlistRepository: playlistRepository,
           onProgress: (progress) {
             state = ScanState.scanning(progress);
           },
@@ -133,6 +140,8 @@ class ScanNotifier extends StateNotifier<ScanState> {
 
       // 刷新音乐库数据
       _ref.read(libraryRefreshProvider.notifier).refresh();
+      // 强制刷新歌单列表（确保歌曲计数更新）
+      _ref.invalidate(playlistsProvider);
 
       return count;
     } catch (e) {

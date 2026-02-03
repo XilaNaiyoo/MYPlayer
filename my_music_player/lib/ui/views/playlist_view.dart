@@ -241,13 +241,36 @@ class PlaylistView extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
-            // 歌曲数量
-            Text(
-              '${playlist.songIds.length} 首歌曲',
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 12,
-              ),
+            // 歌曲数量（使用实际有效歌曲数）
+            Consumer(
+              builder: (context, ref, _) {
+                final countAsync = ref.watch(
+                  playlistValidSongCountProvider(playlist.id),
+                );
+                return countAsync.when(
+                  data: (count) => Text(
+                    '$count 首歌曲',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  loading: () => Text(
+                    '${playlist.songIds.length} 首歌曲',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  error: (_, __) => Text(
+                    '${playlist.songIds.length} 首歌曲',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

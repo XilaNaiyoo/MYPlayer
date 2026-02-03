@@ -13,6 +13,18 @@ final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
   return await repository.getAllPlaylists();
 });
 
+/// 获取歌单的有效歌曲数量 Provider（过滤已删除的歌曲）
+final playlistValidSongCountProvider = FutureProvider.family<int, int>((
+  ref,
+  playlistId,
+) async {
+  ref.watch(libraryRefreshProvider);
+  final playlistRepo = ref.watch(playlistRepositoryProvider);
+  final detail = await playlistRepo.getPlaylistWithSongs(playlistId);
+  // 返回实际查询到的歌曲数量（已过滤无效 ID）
+  return detail?.songs.length ?? 0;
+});
+
 /// 当前选中的歌单 ID Provider
 final selectedPlaylistIdProvider = StateProvider<int?>((ref) => null);
 

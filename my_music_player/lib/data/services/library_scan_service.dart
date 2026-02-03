@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../models/song.dart';
 import '../repositories/song_repository.dart';
 import '../repositories/library_folder_repository.dart';
+import '../repositories/playlist_repository.dart';
 
 /// 扫描进度回调类型
 typedef ScanProgressCallback = void Function(ScanProgress progress);
@@ -94,6 +95,7 @@ class LibraryScanService {
     required String folderPath,
     required SongRepository songRepository,
     required LibraryFolderRepository folderRepository,
+    required PlaylistRepository playlistRepository,
     ScanProgressCallback? onProgress,
   }) async {
     final folder = await folderRepository.getFolderByPath(folderPath);
@@ -116,9 +118,11 @@ class LibraryScanService {
     // 收集所有音频文件
     final audioFiles = await _collectAudioFiles(folderPath, onProgress);
 
-    // 获取现有歌曲的文件路径映射
+    // 获取现有歌曲的文件路径映射 (path -> songId)
     final existingSongs = await songRepository.getSongsByFolder(folderPath);
-    final existingPaths = {for (final s in existingSongs) s.filePath: s};
+    final existingPaths = {for (final s in existingSongs) s.filePath: s.id};
+    // 保留 path -> song 的映射用于修改时间比较
+    final existingSongMap = {for (final s in existingSongs) s.filePath: s};
 
     // 分类：新增、修改、删除
     final newFiles = <File>[];
@@ -127,15 +131,15 @@ class LibraryScanService {
 
     for (final file in audioFiles) {
       currentPaths.add(file.path);
-      final existing = existingPaths[file.path];
+      final existingSong = existingSongMap[file.path];
 
-      if (existing == null) {
+      if (existingSong == null) {
         // 新文件
         newFiles.add(file);
       } else {
         // 检查是否修改
         final fileStat = await file.stat();
-        if (fileStat.modified.isAfter(existing.modifiedTime)) {
+        if (fileStat.modified.isAfter(existingSong.modifiedTime)) {
           modifiedFiles.add(file);
         }
       }
@@ -146,9 +150,18 @@ class LibraryScanService {
         .where((path) => !currentPaths.contains(path))
         .toList();
 
-    // 删除已移除的文件记录
+    // 删除已移除的文件记录，并清理歌单中的引用
+    final deletedSongIds = <int>[];
     for (final path in deletedPaths) {
+      final songId = existingPaths[path];
+      if (songId != null) {
+        deletedSongIds.add(songId);
+      }
       await songRepository.deleteSongByPath(path);
+    }
+    // 从所有歌单中移除已删除歌曲的 ID
+    if (deletedSongIds.isNotEmpty) {
+      await playlistRepository.removeSongsFromAllPlaylists(deletedSongIds);
     }
 
     // 处理新增和修改的文件
@@ -197,10 +210,13 @@ class LibraryScanService {
   Future<int> scanAllFolders({
     required SongRepository songRepository,
     required LibraryFolderRepository folderRepository,
+    required PlaylistRepository playlistRepository,
     ScanProgressCallback? onProgress,
     bool incremental = true,
   }) async {
-    final folders = await folderRepository.getEnabledFolders();
+    final folders = await folderRepository.getAllFolders();
+    if (folders.isEmpty) return 0;
+
     int totalScanned = 0;
 
     for (int i = 0; i < folders.length; i++) {
@@ -220,6 +236,7 @@ class LibraryScanService {
                 folderPath: folder.path,
                 songRepository: songRepository,
                 folderRepository: folderRepository,
+                playlistRepository: playlistRepository,
               )
             : await scanFolder(
                 folderPath: folder.path,
