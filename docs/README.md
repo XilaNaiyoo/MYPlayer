@@ -42,7 +42,7 @@
 ## 📦 安装与运行 (开发版暂行)
 
 ### 前置要求
-*   准备 ![VSCode](https://code.visualstudio.com/download) 或者基于 VSCode 的开发平台(如：![Antigravity](https://antigravity.google/download))
+*   准备 [VSCode](https://code.visualstudio.com/download) 或者基于 VSCode 的开发平台(如：[Antigravity](https://antigravity.google/download))
     *   安装 Flutter 插件和 Dart 插件
 *   Git
 
