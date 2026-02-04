@@ -5,6 +5,7 @@ import '../../data/models/song.dart';
 import '../../providers/providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/batch_edit_dialog.dart';
+import '../widgets/playlist_selector_dialog.dart';
 
 /// 艺术家详情页 - 显示艺术家的歌曲列表
 class ArtistDetailView extends ConsumerStatefulWidget {
@@ -92,12 +93,29 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
           ),
           const Spacer(),
+          // 添加到歌单按钮
+          OutlinedButton.icon(
+            onPressed: selectedCount > 0
+                ? () => _addToPlaylist(selectedSongs)
+                : null,
+            icon: const Icon(Icons.playlist_add, size: 18),
+            label: const Text('添加到歌单'),
+          ),
+          const SizedBox(width: 8),
+          // 添加到播放列表按钮（占位）
+          OutlinedButton.icon(
+            onPressed: selectedCount > 0 ? () => _addToPlayQueue() : null,
+            icon: const Icon(Icons.queue_music, size: 18),
+            label: const Text('添加到播放列表'),
+          ),
+          const SizedBox(width: 8),
+          // 编辑元数据按钮
           ElevatedButton.icon(
             onPressed: selectedCount > 0
                 ? () => _showBatchEditDialog(selectedSongs)
                 : null,
             icon: const Icon(Icons.edit, size: 18),
-            label: const Text('编辑'),
+            label: const Text('编辑元数据'),
           ),
           const SizedBox(width: 12),
           OutlinedButton(
@@ -126,6 +144,28 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
         _selectedIds.clear();
       });
     }
+  }
+
+  /// 添加到歌单
+  Future<void> _addToPlaylist(List<Song> songs) async {
+    final songIds = songs.map((s) => s.id).toList();
+    final result = await PlaylistSelectorDialog.show(context, songIds: songIds);
+    if (result == true) {
+      setState(() {
+        _isSelectMode = false;
+        _selectedIds.clear();
+      });
+    }
+  }
+
+  /// 添加到播放列表（占位）
+  void _addToPlayQueue() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('播放列表功能即将上线'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   /// 构建艺术家头部
@@ -219,7 +259,7 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
                           });
                         },
                         icon: const Icon(Icons.checklist, size: 20),
-                        label: const Text('批量编辑'),
+                        label: const Text('批量操作'),
                       ),
                   ],
                 ),
@@ -336,7 +376,11 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
                     color: AppTheme.textDisabled,
                     size: 20,
                   ),
-                  onSelected: (value) {},
+                  onSelected: (value) {
+                    if (value == 'add_to_playlist') {
+                      PlaylistSelectorDialog.show(context, songIds: [song.id]);
+                    }
+                  },
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: 'add_to_playlist',

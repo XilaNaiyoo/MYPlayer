@@ -250,7 +250,7 @@ class _PlaylistDetailViewState extends ConsumerState<PlaylistDetailView> {
                           });
                         },
                         icon: const Icon(Icons.checklist, size: 20),
-                        label: const Text('批量编辑'),
+                        label: const Text('批量操作'),
                       ),
                   ],
                 ),

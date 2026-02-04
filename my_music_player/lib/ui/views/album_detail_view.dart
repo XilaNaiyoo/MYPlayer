@@ -7,6 +7,7 @@ import '../../data/models/song.dart';
 import '../../providers/providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/batch_edit_dialog.dart';
+import '../widgets/playlist_selector_dialog.dart';
 
 /// 专辑详情页 - 显示专辑内的歌曲列表
 class AlbumDetailView extends ConsumerStatefulWidget {
@@ -107,13 +108,29 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
           ),
           const Spacer(),
-          // 编辑按钮
+          // 添加到歌单按钮
+          OutlinedButton.icon(
+            onPressed: selectedCount > 0
+                ? () => _addToPlaylist(selectedSongs)
+                : null,
+            icon: const Icon(Icons.playlist_add, size: 18),
+            label: const Text('添加到歌单'),
+          ),
+          const SizedBox(width: 8),
+          // 添加到播放列表按钮（占位）
+          OutlinedButton.icon(
+            onPressed: selectedCount > 0 ? () => _addToPlayQueue() : null,
+            icon: const Icon(Icons.queue_music, size: 18),
+            label: const Text('添加到播放列表'),
+          ),
+          const SizedBox(width: 8),
+          // 编辑元数据按钮
           ElevatedButton.icon(
             onPressed: selectedCount > 0
                 ? () => _showBatchEditDialog(selectedSongs)
                 : null,
             icon: const Icon(Icons.edit, size: 18),
-            label: const Text('编辑'),
+            label: const Text('编辑元数据'),
           ),
           const SizedBox(width: 12),
           // 退出多选
@@ -145,6 +162,29 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
         _selectedIds.clear();
       });
     }
+  }
+
+  /// 添加到歌单
+  Future<void> _addToPlaylist(List<Song> songs) async {
+    final songIds = songs.map((s) => s.id).toList();
+    final result = await PlaylistSelectorDialog.show(context, songIds: songIds);
+
+    if (result == true) {
+      setState(() {
+        _isSelectMode = false;
+        _selectedIds.clear();
+      });
+    }
+  }
+
+  /// 添加到播放列表（占位）
+  void _addToPlayQueue() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('播放列表功能即将上线'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   /// 构建专辑头部
@@ -237,7 +277,7 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
                           });
                         },
                         icon: const Icon(Icons.checklist, size: 20),
-                        label: const Text('批量编辑'),
+                        label: const Text('批量操作'),
                       ),
                   ],
                 ),
@@ -387,7 +427,10 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
                     size: 20,
                   ),
                   onSelected: (value) {
-                    // TODO: 处理菜单操作
+                    if (value == 'add_to_playlist') {
+                      // 添加到歌单
+                      PlaylistSelectorDialog.show(context, songIds: [song.id]);
+                    }
                   },
                   itemBuilder: (context) => [
                     const PopupMenuItem(
