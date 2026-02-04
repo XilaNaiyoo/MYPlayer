@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../data/models/playlist.dart';
 import '../../providers/providers.dart';
@@ -46,6 +47,13 @@ class PlaylistView extends ConsumerWidget {
                       .value ??
                   const SizedBox(),
               const Spacer(),
+              // 导入 M3U 按钮
+              OutlinedButton.icon(
+                onPressed: () => _importM3U(context, ref),
+                icon: const Icon(Icons.file_upload_outlined, size: 18),
+                label: const Text('导入 M3U'),
+              ),
+              const SizedBox(width: 12),
               // 创建歌单按钮
               ElevatedButton.icon(
                 onPressed: () => _showCreateDialog(context, ref),
@@ -195,6 +203,9 @@ class PlaylistView extends ConsumerWidget {
                             case 'rename':
                               _showRenameDialog(context, ref, playlist);
                               break;
+                            case 'export':
+                              _exportM3U(context, ref, playlist);
+                              break;
                             case 'delete':
                               _showDeleteDialog(context, ref, playlist);
                               break;
@@ -208,6 +219,16 @@ class PlaylistView extends ConsumerWidget {
                                 Icon(Icons.edit, size: 18),
                                 SizedBox(width: 8),
                                 Text('重命名'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'export',
+                            child: Row(
+                              children: [
+                                Icon(Icons.file_download_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('导出为 M3U'),
                               ],
                             ),
                           ),
@@ -385,6 +406,130 @@ class PlaylistView extends ConsumerWidget {
 
     if (confirm == true) {
       await ref.read(playlistActionsProvider).deletePlaylist(playlist.id);
+    }
+  }
+
+  /// 导入 M3U 歌单
+  Future<void> _importM3U(BuildContext context, WidgetRef ref) async {
+    // 选择 M3U 文件
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['m3u', 'm3u8'],
+      allowMultiple: false,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final filePath = result.files.single.path;
+    if (filePath == null) return;
+
+    // 显示加载对话框
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('正在导入歌单...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    try {
+      final ioService = ref.read(playlistIOServiceProvider);
+      final playlistId = await ioService.importFromM3U(filePath);
+
+      // 关闭加载对话框
+      if (context.mounted) Navigator.pop(context);
+
+      if (playlistId != null) {
+        // 刷新歌单列表
+        ref.read(libraryRefreshProvider.notifier).refresh();
+        ref.invalidate(playlistsProvider);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('歌单导入成功'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('导入失败：M3U 文件无效或没有匹配的歌曲'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // 关闭加载对话框
+      if (context.mounted) Navigator.pop(context);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导入失败：$e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  /// 导出歌单为 M3U
+  Future<void> _exportM3U(
+    BuildContext context,
+    WidgetRef ref,
+    Playlist playlist,
+  ) async {
+    // 选择保存位置
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: '导出歌单',
+      fileName: '${playlist.name}.m3u',
+      type: FileType.custom,
+      allowedExtensions: ['m3u'],
+    );
+
+    if (outputPath == null) return;
+
+    try {
+      final ioService = ref.read(playlistIOServiceProvider);
+      final success = await ioService.exportToM3U(playlist.id, outputPath);
+
+      if (success) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('已导出到: $outputPath'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('导出失败'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导出失败：$e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 }

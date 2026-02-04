@@ -84,7 +84,14 @@ class PlaylistIOService {
         throw Exception('文件不存在: $filePath');
       }
 
-      final content = await file.readAsString();
+      // 尝试使用系统编码读取（支持 GBK/CP936 等本地编码）
+      String content;
+      try {
+        content = await file.readAsString();
+      } catch (e) {
+        // UTF-8 失败，尝试使用系统默认编码
+        content = await file.readAsString(encoding: SystemEncoding());
+      }
       final lines = content.split('\n').map((l) => l.trim()).toList();
 
       // 解析 M3U 内容
@@ -111,18 +118,29 @@ class PlaylistIOService {
 
         // 这是一个文件路径
         String songPath = line;
+        print('=== 解析路径 ===');
+        print('原始路径: $songPath');
 
         // 处理相对路径
         if (!p.isAbsolute(songPath)) {
           final m3uDir = p.dirname(filePath);
+          print('M3U 所在目录: $m3uDir');
           songPath = p.normalize(p.join(m3uDir, songPath));
+          print('转换后绝对路径: $songPath');
         }
 
         // 检查文件是否存在
-        if (await File(songPath).exists()) {
+        final fileExists = await File(songPath).exists();
+        print('文件存在: $fileExists');
+
+        if (fileExists) {
           songPaths.add(songPath);
+        } else {
+          print('文件不存在，跳过: $songPath');
         }
       }
+
+      print('=== 有效路径数量: ${songPaths.length} ===');
 
       if (songPaths.isEmpty) {
         throw Exception('M3U 文件中没有有效的歌曲路径');
@@ -140,9 +158,28 @@ class PlaylistIOService {
       // 查找歌曲 ID 并添加到歌单
       final songIds = <int>[];
       for (final path in songPaths) {
-        final song = await _songRepository.getSongByPath(path);
+        // 规范化路径以确保匹配（Windows 路径大小写不敏感）
+        final normalizedPath = p.normalize(path);
+        var song = await _songRepository.getSongByPath(normalizedPath);
+
+        // 如果精确匹配失败，尝试不区分大小写的匹配
+        if (song == null) {
+          // 获取所有歌曲并手动匹配（性能考虑，仅在精确匹配失败时使用）
+          final allSongs = await _songRepository.getAllSongs();
+          final matches = allSongs.where(
+            (s) =>
+                p.normalize(s.filePath).toLowerCase() ==
+                normalizedPath.toLowerCase(),
+          );
+          if (matches.isNotEmpty) {
+            song = matches.first;
+          }
+        }
+
         if (song != null) {
           songIds.add(song.id);
+        } else {
+          print('未找到匹配的歌曲: $normalizedPath');
         }
       }
 
