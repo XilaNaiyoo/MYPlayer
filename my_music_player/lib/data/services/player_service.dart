@@ -11,9 +11,28 @@ class PlayerService {
   /// 当前播放的文件路径
   String? _currentFilePath;
 
+  /// 音频输出配置 Future，确保在播放前完成
+  late final Future<void> _audioConfigFuture;
+
   PlayerService() {
-    _player = Player();
+    _player = Player(
+      configuration: const PlayerConfiguration(
+        title: 'MY Music Player',
+      ),
+    );
+    _audioConfigFuture = _configureAudioOutput();
     _initialized = true;
+  }
+
+  /// 配置音频输出为 WASAPI，避免 OpenAL Soft 初始化失败 (AUDCLNT_E_DEVICE_IN_USE 0x8889000a)
+  Future<void> _configureAudioOutput() async {
+    try {
+      if (_player.platform is NativePlayer) {
+        await (_player.platform as NativePlayer).setProperty('ao', 'wasapi');
+      }
+    } catch (e) {
+      // 配置失败时回退到默认音频输出
+    }
   }
 
   /// 获取播放器实例（供高级用法）
@@ -29,6 +48,7 @@ class PlayerService {
 
   /// 打开并播放媒体文件
   Future<void> open(String filePath) async {
+    await _audioConfigFuture; // 确保音频输出已配置
     _currentFilePath = filePath;
     await _player.open(Media(filePath));
   }

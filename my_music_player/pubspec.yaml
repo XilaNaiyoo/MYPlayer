@@ -37,6 +37,9 @@ dependencies:
   media_kit: ^1.1.11
   media_kit_libs_windows_audio: ^1.0.9
 
+  # Windows 系统媒体控制集成
+  smtc_windows: ^0.1.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

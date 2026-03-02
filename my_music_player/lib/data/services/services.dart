@@ -5,3 +5,4 @@ export 'library_scan_service.dart';
 export 'metadata_service.dart';
 export 'player_service.dart';
 export 'playlist_io_service.dart';
+export 'smtc_service.dart';
