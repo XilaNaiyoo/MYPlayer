@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/song.dart';
+import '../../providers/queue_provider.dart';
 import '../../providers/providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/batch_edit_dialog.dart';
@@ -177,14 +178,30 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
     }
   }
 
-  /// 添加到播放列表（占位）
+  /// 添加选中歌曲到播放队列
   void _addToPlayQueue() {
+    final selectedSongs =
+        ref
+            .read(albumSongsProvider(widget.albumName))
+            .valueOrNull
+            ?.where((s) => _selectedIds.contains(s.id))
+            .toList() ??
+        [];
+    if (selectedSongs.isEmpty) return;
+
+    ref.read(queueProvider.notifier).addAllToQueue(selectedSongs);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('播放列表功能即将上线'),
-        backgroundColor: Colors.orange,
+      SnackBar(
+        content: Text('已添加 ${selectedSongs.length} 首歌曲到播放队列'),
+        backgroundColor: AppTheme.primaryColor,
       ),
     );
+
+    setState(() {
+      _isSelectMode = false;
+      _selectedIds.clear();
+    });
   }
 
   /// 构建专辑头部
@@ -247,7 +264,15 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
                   children: [
                     ElevatedButton.icon(
                       onPressed: () {
-                        // TODO: 播放专辑
+                        // 播放整张专辑
+                        final songs =
+                            ref
+                                .read(albumSongsProvider(widget.albumName))
+                                .valueOrNull ??
+                            [];
+                        if (songs.isNotEmpty) {
+                          ref.read(queueProvider.notifier).playList(songs);
+                        }
                       },
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('播放'),
@@ -261,7 +286,19 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
                       onPressed: () {
-                        // TODO: 随机播放
+                        // 随机播放专辑
+                        final songs =
+                            ref
+                                .read(albumSongsProvider(widget.albumName))
+                                .valueOrNull ??
+                            [];
+                        if (songs.isNotEmpty) {
+                          // 先切换为随机模式再播放
+                          final notifier = ref.read(queueProvider.notifier);
+                          // 打乱顺序播放
+                          final shuffled = List<Song>.from(songs)..shuffle();
+                          notifier.playList(shuffled);
+                        }
                       },
                       icon: const Icon(Icons.shuffle),
                       label: const Text('随机播放'),
@@ -319,13 +356,15 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: songs.length,
       itemBuilder: (context, index) {
-        return _buildSongItem(context, songs[index], index + 1);
+        return _buildSongItem(context, songs, index);
       },
     );
   }
 
   /// 构建歌曲项
-  Widget _buildSongItem(BuildContext context, Song song, int trackNumber) {
+  Widget _buildSongItem(BuildContext context, List<Song> songs, int index) {
+    final song = songs[index];
+    final trackNumber = index + 1;
     final isSelected = _selectedIds.contains(song.id);
 
     return Material(
@@ -344,8 +383,8 @@ class _AlbumDetailViewState extends ConsumerState<AlbumDetailView> {
               }
             });
           } else {
-            // 正常模式：播放歌曲
-            // TODO: 播放歌曲
+            // 正常模式：播放整张专辑，从当前歌曲开始
+            ref.read(queueProvider.notifier).playList(songs, startIndex: index);
           }
         },
         borderRadius: BorderRadius.circular(4),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
@@ -9,6 +10,9 @@ import 'core/database/database_service.dart';
 void main() async {
   // 确保 Flutter 绑定初始化
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化 media_kit 播放引擎
+  MediaKit.ensureInitialized();
 
   // 初始化窗口管理器
   await windowManager.ensureInitialized();

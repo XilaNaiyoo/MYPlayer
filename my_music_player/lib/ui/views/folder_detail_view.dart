@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/song.dart';
 import '../../providers/providers.dart';
+import '../../providers/queue_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/batch_edit_dialog.dart';
 import '../widgets/playlist_selector_dialog.dart';
@@ -171,14 +172,30 @@ class _FolderDetailViewState extends ConsumerState<FolderDetailView> {
     }
   }
 
-  /// 添加到播放列表（占位）
+  /// 添加选中歌曲到播放队列
   void _addToPlayQueue() {
+    final selectedSongs =
+        ref
+            .read(folderSongsProvider(widget.folderPath))
+            .valueOrNull
+            ?.where((s) => _selectedIds.contains(s.id))
+            .toList() ??
+        [];
+    if (selectedSongs.isEmpty) return;
+
+    ref.read(queueProvider.notifier).addAllToQueue(selectedSongs);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('播放列表功能即将上线'),
-        backgroundColor: Colors.orange,
+      SnackBar(
+        content: Text('已添加 ${selectedSongs.length} 首歌曲到播放队列'),
+        backgroundColor: AppTheme.primaryColor,
       ),
     );
+
+    setState(() {
+      _isSelectMode = false;
+      _selectedIds.clear();
+    });
   }
 
   /// 构建文件夹头部
@@ -326,7 +343,7 @@ class _FolderDetailViewState extends ConsumerState<FolderDetailView> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: songs.length,
       itemBuilder: (context, index) {
-        return _buildSongItem(context, ref, songs[index], index + 1);
+        return _buildSongItem(context, ref, songs, index);
       },
     );
   }
@@ -335,9 +352,10 @@ class _FolderDetailViewState extends ConsumerState<FolderDetailView> {
   Widget _buildSongItem(
     BuildContext context,
     WidgetRef ref,
-    Song song,
+    List<Song> songs,
     int index,
   ) {
+    final song = songs[index];
     final isSelected = _selectedIds.contains(song.id);
 
     return Material(
@@ -354,6 +372,9 @@ class _FolderDetailViewState extends ConsumerState<FolderDetailView> {
                 _selectedIds.add(song.id);
               }
             });
+          } else {
+            // 正常模式：播放文件夹内所有歌曲，从当前开始
+            ref.read(queueProvider.notifier).playList(songs, startIndex: index);
           }
         },
         borderRadius: BorderRadius.circular(4),

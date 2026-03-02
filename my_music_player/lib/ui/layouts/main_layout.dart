@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/top_control_bar.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/bottom_player_bar.dart';
+import '../widgets/queue_panel.dart';
 import '../views/album_view.dart';
 import '../views/album_detail_view.dart';
 import '../views/artist_detail_view.dart';
@@ -57,7 +58,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       : null,
                 ),
 
-                // 右侧区域（顶部控制栏 + 主内容区）
+                // 中部区域（顶部控制栏 + 主内容区）
                 Expanded(
                   child: Column(
                     children: [
@@ -80,6 +81,19 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       ),
                     ],
                   ),
+                ),
+
+                // 右侧播放队列面板（可收起）
+                Consumer(
+                  builder: (context, ref, _) {
+                    final isVisible = ref.watch(queuePanelVisibleProvider);
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      width: isVisible ? 320 : 0,
+                      child: isVisible ? const QueuePanel() : null,
+                    );
+                  },
                 ),
               ],
             ),

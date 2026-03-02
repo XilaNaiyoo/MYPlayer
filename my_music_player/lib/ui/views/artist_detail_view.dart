@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/song.dart';
 import '../../providers/providers.dart';
+import '../../providers/queue_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/batch_edit_dialog.dart';
 import '../widgets/playlist_selector_dialog.dart';
@@ -158,14 +159,30 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
     }
   }
 
-  /// 添加到播放列表（占位）
+  /// 添加选中歌曲到播放队列
   void _addToPlayQueue() {
+    final selectedSongs =
+        ref
+            .read(artistSongsProvider(widget.artistName))
+            .valueOrNull
+            ?.where((s) => _selectedIds.contains(s.id))
+            .toList() ??
+        [];
+    if (selectedSongs.isEmpty) return;
+
+    ref.read(queueProvider.notifier).addAllToQueue(selectedSongs);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('播放列表功能即将上线'),
-        backgroundColor: Colors.orange,
+      SnackBar(
+        content: Text('已添加 ${selectedSongs.length} 首歌曲到播放队列'),
+        backgroundColor: AppTheme.primaryColor,
       ),
     );
+
+    setState(() {
+      _isSelectMode = false;
+      _selectedIds.clear();
+    });
   }
 
   /// 构建艺术家头部
@@ -277,13 +294,14 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: songs.length,
       itemBuilder: (context, index) {
-        return _buildSongItem(context, songs[index], index + 1);
+        return _buildSongItem(context, songs, index);
       },
     );
   }
 
   /// 构建歌曲项
-  Widget _buildSongItem(BuildContext context, Song song, int index) {
+  Widget _buildSongItem(BuildContext context, List<Song> songs, int index) {
+    final song = songs[index];
     final isSelected = _selectedIds.contains(song.id);
 
     return Material(
@@ -300,6 +318,9 @@ class _ArtistDetailViewState extends ConsumerState<ArtistDetailView> {
                 _selectedIds.add(song.id);
               }
             });
+          } else {
+            // 正常模式：播放该艺术家的所有歌曲，从当前开始
+            ref.read(queueProvider.notifier).playList(songs, startIndex: index);
           }
         },
         borderRadius: BorderRadius.circular(4),

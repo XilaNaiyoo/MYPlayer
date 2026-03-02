@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/song.dart';
 import '../../data/repositories/playlist_repository.dart';
 import '../../providers/providers.dart';
+import '../../providers/queue_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/batch_edit_dialog.dart';
 
@@ -316,7 +317,7 @@ class _PlaylistDetailViewState extends ConsumerState<PlaylistDetailView> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         itemCount: songs.length,
         itemBuilder: (context, index) {
-          return _buildSongItem(context, ref, songs[index], index);
+          return _buildSongItem(context, ref, songs, index);
         },
       );
     }
@@ -332,7 +333,7 @@ class _PlaylistDetailViewState extends ConsumerState<PlaylistDetailView> {
             .reorderSongs(widget.playlistId, oldIndex, newIndex);
       },
       itemBuilder: (context, index) {
-        return _buildSongItem(context, ref, songs[index], index);
+        return _buildSongItem(context, ref, songs, index);
       },
     );
   }
@@ -341,9 +342,10 @@ class _PlaylistDetailViewState extends ConsumerState<PlaylistDetailView> {
   Widget _buildSongItem(
     BuildContext context,
     WidgetRef ref,
-    Song song,
+    List<Song> songs,
     int index,
   ) {
+    final song = songs[index];
     final isSelected = _selectedIds.contains(song.id);
 
     return Material(
@@ -362,7 +364,8 @@ class _PlaylistDetailViewState extends ConsumerState<PlaylistDetailView> {
               }
             });
           } else {
-            // TODO: 播放歌曲
+            // 正常模式：播放歌单内所有歌曲，从当前开始
+            ref.read(queueProvider.notifier).playList(songs, startIndex: index);
           }
         },
         borderRadius: BorderRadius.circular(4),
