@@ -125,7 +125,7 @@ class PlaylistView extends ConsumerWidget {
     );
   }
 
-  /// 构建歌单网格
+  /// 构建歌单网格（货架风格）
   Widget _buildPlaylistGrid(
     BuildContext context,
     WidgetRef ref,
@@ -134,10 +134,10 @@ class PlaylistView extends ConsumerWidget {
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 200,
+        maxCrossAxisExtent: 220,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.85,
+        childAspectRatio: 0.68,
       ),
       itemCount: playlists.length,
       itemBuilder: (context, index) {
@@ -146,7 +146,7 @@ class PlaylistView extends ConsumerWidget {
     );
   }
 
-  /// 构建单个歌单卡片
+  /// 构建单个歌单卡片（货架商品卡风格）
   Widget _buildPlaylistCard(
     BuildContext context,
     WidgetRef ref,
@@ -156,7 +156,6 @@ class PlaylistView extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // 导航到歌单详情页
           ref
               .read(navigationProvider.notifier)
               .navigateToDetail(
@@ -165,39 +164,62 @@ class PlaylistView extends ConsumerWidget {
                 title: playlist.name,
               );
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         hoverColor: AppTheme.hoverColor,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 封面区域
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.dividerColor),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.shelfCardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.shelfCardBorderColor,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 顶部标题条
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: const BoxDecoration(
+                  color: AppTheme.cardColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(11),
+                    topRight: Radius.circular(11),
+                  ),
                 ),
-                child: Stack(
+                child: Row(
                   children: [
-                    // 默认封面图标
-                    const Center(
-                      child: Icon(
-                        Icons.queue_music,
-                        size: 48,
-                        color: AppTheme.textDisabled,
+                    Expanded(
+                      child: Text(
+                        playlist.name,
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // 右上角菜单
-                    Positioned(
-                      top: 4,
-                      right: 4,
+                    // 菜单按钮
+                    SizedBox(
+                      width: 24,
+                      height: 24,
                       child: PopupMenuButton<String>(
                         icon: const Icon(
                           Icons.more_vert,
                           color: AppTheme.textSecondary,
-                          size: 20,
+                          size: 16,
                         ),
+                        padding: EdgeInsets.zero,
                         onSelected: (value) {
                           switch (value) {
                             case 'rename':
@@ -248,52 +270,86 @@ class PlaylistView extends ConsumerWidget {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            // 歌单名称
-            Text(
-              playlist.name,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+
+              // 封面区域
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const Center(
+                        child: Icon(
+                          Icons.queue_music,
+                          size: 48,
+                          color: AppTheme.textDisabled,
+                        ),
+                      ),
+                      // 右下角徽章
+                      Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.playlist_play,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            // 歌曲数量（使用实际有效歌曲数）
-            Consumer(
-              builder: (context, ref, _) {
-                final countAsync = ref.watch(
-                  playlistValidSongCountProvider(playlist.id),
-                );
-                return countAsync.when(
-                  data: (count) => Text(
-                    '$count 首歌曲',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  loading: () => Text(
-                    '${playlist.songIds.length} 首歌曲',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  error: (_, __) => Text(
-                    '${playlist.songIds.length} 首歌曲',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+
+              // 底部信息栏
+              Container(
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final countAsync = ref.watch(
+                      playlistValidSongCountProvider(playlist.id),
+                    );
+                    final count = countAsync.valueOrNull ?? playlist.songIds.length;
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '$count 首歌曲',
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.queue_music,
+                          size: 14,
+                          color: AppTheme.textDisabled.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

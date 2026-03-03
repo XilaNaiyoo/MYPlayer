@@ -30,6 +30,9 @@ class _BottomPlayerBarState extends ConsumerState<BottomPlayerBar> {
   /// 上次缓存封面对应的歌曲路径
   String? _cachedCoverSongPath;
 
+  /// 是否鼠标悬停在进度条区域
+  bool _isProgressHovered = false;
+
   @override
   Widget build(BuildContext context) {
     // 监听当前播放的歌曲
@@ -51,26 +54,145 @@ class _BottomPlayerBarState extends ConsumerState<BottomPlayerBar> {
 
     final hasCurrentSong = currentSong != null;
 
-    return Container(
-      height: 72,
-      color: AppTheme.playerBarColor,
-      child: Row(
-        children: [
-          // 左侧：信息区
-          _buildInfoArea(currentSong),
+    // 计算进度
+    final progressValue = duration.inMilliseconds > 0
+        ? (_isDragging
+              ? _dragPosition
+              : position.inMilliseconds / duration.inMilliseconds)
+        : 0.0;
 
-          // 中部：控制区
-          _buildControlArea(
-            context,
-            isPlaying: isPlaying,
-            position: position,
-            duration: duration,
-            enabled: hasCurrentSong,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 顶部进度条（播放栏上沿）
+        _buildTopProgressBar(
+          context,
+          progressValue: progressValue,
+          position: position,
+          duration: duration,
+          enabled: hasCurrentSong,
+        ),
+
+        // 主播放栏
+        Container(
+          height: 68,
+          color: AppTheme.playerBarColor,
+          child: Row(
+            children: [
+              // 左侧：信息区
+              _buildInfoArea(currentSong),
+
+              // 中部：控制区（仅按钮，不含进度条）
+              _buildControlArea(
+                context,
+                isPlaying: isPlaying,
+                enabled: hasCurrentSong,
+              ),
+
+              // 右侧：工具区
+              _buildToolsArea(context, volume: volume),
+            ],
           ),
+        ),
+      ],
+    );
+  }
 
-          // 右侧：工具区
-          _buildToolsArea(context, volume: volume),
-        ],
+  /// 顶部进度条 — 位于播放栏上沿，预留 hover 展开
+  Widget _buildTopProgressBar(
+    BuildContext context, {
+    required double progressValue,
+    required Duration position,
+    required Duration duration,
+    required bool enabled,
+  }) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isProgressHovered = true),
+      onExit: (_) => setState(() => _isProgressHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: _isProgressHovered ? 14 : 4,
+        color: AppTheme.playerBarColor,
+        child: Stack(
+          children: [
+            // 进度条滑块
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: _isProgressHovered ? 4 : 2,
+                thumbShape: RoundSliderThumbShape(
+                  enabledThumbRadius: _isProgressHovered ? 6 : 0,
+                ),
+                overlayShape: SliderComponentShape.noOverlay,
+                activeTrackColor: enabled
+                    ? AppTheme.primaryColor
+                    : AppTheme.textDisabled,
+                inactiveTrackColor: AppTheme.dividerColor,
+                thumbColor: AppTheme.primaryColor,
+                trackShape: const RectangularSliderTrackShape(),
+              ),
+              child: Slider(
+                value: progressValue.clamp(0.0, 1.0),
+                onChanged: enabled
+                    ? (value) {
+                        setState(() {
+                          _isDragging = true;
+                          _dragPosition = value;
+                        });
+                      }
+                    : null,
+                onChangeEnd: enabled
+                    ? (value) {
+                        setState(() => _isDragging = false);
+                        final newPosition = Duration(
+                          milliseconds:
+                              (value * duration.inMilliseconds).round(),
+                        );
+                        ref.read(playerActionsProvider).seek(newPosition);
+                      }
+                    : null,
+              ),
+            ),
+            // hover 时显示时间
+            if (_isProgressHovered)
+              Positioned(
+                left: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Text(
+                    _formatDuration(
+                      _isDragging
+                          ? Duration(
+                              milliseconds:
+                                  (_dragPosition * duration.inMilliseconds)
+                                      .round(),
+                            )
+                          : position,
+                    ),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+            if (_isProgressHovered)
+              Positioned(
+                right: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Text(
+                    _formatDuration(duration),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -164,138 +286,40 @@ class _BottomPlayerBarState extends ConsumerState<BottomPlayerBar> {
     );
   }
 
-  /// 中部控制区 - 播放控制按钮和进度条
+  /// 中部控制区 - 仅播放控制按钮（进度条已移至顶部）
   Widget _buildControlArea(
     BuildContext context, {
     required bool isPlaying,
-    required Duration position,
-    required Duration duration,
     required bool enabled,
   }) {
-    // 计算进度
-    final progressValue = duration.inMilliseconds > 0
-        ? (_isDragging
-              ? _dragPosition
-              : position.inMilliseconds / duration.inMilliseconds)
-        : 0.0;
-
     return Expanded(
-      child: Column(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 播放控制按钮行
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 循环模式按钮
-              _buildLoopModeButton(),
+          // 循环模式按钮
+          _buildLoopModeButton(),
 
-              // 上一首
-              IconButton(
-                icon: const Icon(Icons.skip_previous, size: 28),
-                color: enabled ? AppTheme.textSecondary : AppTheme.textDisabled,
-                onPressed: enabled
-                    ? () => ref.read(queueProvider.notifier).previous()
-                    : null,
-                tooltip: '上一首',
-              ),
-
-              // 播放/暂停按钮
-              _buildPlayPauseButton(isPlaying: isPlaying, enabled: enabled),
-
-              // 下一首
-              IconButton(
-                icon: const Icon(Icons.skip_next, size: 28),
-                color: enabled ? AppTheme.textSecondary : AppTheme.textDisabled,
-                onPressed: enabled
-                    ? () => ref.read(queueProvider.notifier).next()
-                    : null,
-                tooltip: '下一首',
-              ),
-            ],
+          // 上一首
+          IconButton(
+            icon: const Icon(Icons.skip_previous, size: 28),
+            color: enabled ? AppTheme.textSecondary : AppTheme.textDisabled,
+            onPressed: enabled
+                ? () => ref.read(queueProvider.notifier).previous()
+                : null,
+            tooltip: '上一首',
           ),
 
-          const SizedBox(height: 4),
+          // 播放/暂停按钮
+          _buildPlayPauseButton(isPlaying: isPlaying, enabled: enabled),
 
-          // 进度条行
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 80),
-            child: Row(
-              children: [
-                // 当前时间
-                Text(
-                  _formatDuration(
-                    _isDragging
-                        ? Duration(
-                            milliseconds:
-                                (_dragPosition * duration.inMilliseconds)
-                                    .round(),
-                          )
-                        : position,
-                  ),
-                  style: TextStyle(
-                    color: enabled
-                        ? AppTheme.textSecondary
-                        : AppTheme.textDisabled,
-                    fontSize: 11,
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // 进度条
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3,
-                      thumbShape: RoundSliderThumbShape(
-                        enabledThumbRadius: enabled ? 6 : 0,
-                      ),
-                      overlayShape: SliderComponentShape.noOverlay,
-                      activeTrackColor: enabled
-                          ? AppTheme.primaryColor
-                          : AppTheme.textDisabled,
-                      inactiveTrackColor: AppTheme.dividerColor,
-                      thumbColor: AppTheme.primaryColor,
-                    ),
-                    child: Slider(
-                      value: progressValue.clamp(0.0, 1.0),
-                      onChanged: enabled
-                          ? (value) {
-                              setState(() {
-                                _isDragging = true;
-                                _dragPosition = value;
-                              });
-                            }
-                          : null,
-                      onChangeEnd: enabled
-                          ? (value) {
-                              setState(() => _isDragging = false);
-                              final newPosition = Duration(
-                                milliseconds: (value * duration.inMilliseconds)
-                                    .round(),
-                              );
-                              ref.read(playerActionsProvider).seek(newPosition);
-                            }
-                          : null,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // 总时长
-                Text(
-                  _formatDuration(duration),
-                  style: TextStyle(
-                    color: enabled
-                        ? AppTheme.textSecondary
-                        : AppTheme.textDisabled,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
+          // 下一首
+          IconButton(
+            icon: const Icon(Icons.skip_next, size: 28),
+            color: enabled ? AppTheme.textSecondary : AppTheme.textDisabled,
+            onPressed: enabled
+                ? () => ref.read(queueProvider.notifier).next()
+                : null,
+            tooltip: '下一首',
           ),
         ],
       ),

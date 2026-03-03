@@ -40,11 +40,17 @@ class AppTheme {
   /// 分割线颜色
   static const Color dividerColor = Color(0xFF2A2A2A);
 
-  /// 悬停背景色
-  static const Color hoverColor = Color(0xFF2D2D2D);
+  /// 悬停背景色 - 电光蓝半透明（除关闭按钮外统一）
+  static const Color hoverColor = Color(0x2600E5FF);
 
   /// 选中/激活色
   static const Color activeColor = Color(0xFFE53935);
+
+  /// 货架卡片边框色
+  static const Color shelfCardBorderColor = Color(0xFF3A3A3A);
+
+  /// 货架卡片内底色
+  static const Color shelfCardColor = Color(0xFF1E1E1E);
 
   // ==================== 深色主题 ====================
 
