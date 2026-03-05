@@ -52,3 +52,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: SourceHanSerifSC
+      fonts:
+        - asset: assets/fonts/SourceHanSerifSC-VF.otf
