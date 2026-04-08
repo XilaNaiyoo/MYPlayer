@@ -10,10 +10,14 @@ class Sidebar extends StatelessWidget {
   /// 导航项选中回调
   final ValueChanged<String> onItemSelected;
 
+  /// 侧边栏折叠/展开回调
+  final VoidCallback onToggleSidebar;
+
   const Sidebar({
     super.key,
     required this.currentItem,
     required this.onItemSelected,
+    required this.onToggleSidebar,
   });
 
   @override
@@ -24,7 +28,23 @@ class Sidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+
+          // 顶部：折叠按钮（右上角）
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                icon: const Icon(Icons.menu_open, size: 20),
+                color: AppTheme.textSecondary,
+                hoverColor: AppTheme.hoverColor,
+                tooltip: '收起侧边栏',
+                onPressed: onToggleSidebar,
+                splashRadius: 16,
+              ),
+            ),
+          ),
 
           // 音乐库分组
           _buildSectionHeader('音乐库'),

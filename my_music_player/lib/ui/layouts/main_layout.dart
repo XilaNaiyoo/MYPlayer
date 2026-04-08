@@ -54,6 +54,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                           onItemSelected: (item) {
                             _handleSidebarNavigation(item);
                           },
+                          onToggleSidebar: () {
+                            setState(() {
+                              _isSidebarExpanded = !_isSidebarExpanded;
+                            });
+                          },
                         )
                       : null,
                 ),

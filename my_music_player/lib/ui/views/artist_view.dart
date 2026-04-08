@@ -101,14 +101,20 @@ class ArtistView extends ConsumerWidget {
     );
   }
 
-  /// 构建艺术家列表
+  /// 构建艺术家网格（货架风格）
   Widget _buildArtistList(
     BuildContext context,
     WidgetRef ref,
     List<ArtistInfo> artists,
   ) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 220,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.68,
+      ),
       itemCount: artists.length,
       itemBuilder: (context, index) {
         return _buildArtistItem(context, ref, artists[index]);
@@ -116,7 +122,7 @@ class ArtistView extends ConsumerWidget {
     );
   }
 
-  /// 构建单个艺术家项
+  /// 构建单个艺术家卡片（货架商品卡风格）
   Widget _buildArtistItem(
     BuildContext context,
     WidgetRef ref,
@@ -126,59 +132,105 @@ class ArtistView extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // 导航到艺术家详情页
           ref
               .read(navigationProvider.notifier)
               .navigateToDetail(NavViewType.artists, artist.name);
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         hoverColor: AppTheme.hoverColor,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
+          decoration: BoxDecoration(
+            color: AppTheme.shelfCardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.shelfCardBorderColor,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 艺术家头像（圆形占位）
+              // 顶部标题条
               Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.dividerColor),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: const BoxDecoration(
+                  color: AppTheme.cardColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(11),
+                    topRight: Radius.circular(11),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.person,
-                  color: AppTheme.textDisabled,
-                  size: 24,
+                child: Text(
+                  artist.name,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 16),
-              // 艺术家信息
+
+              // 头像区域
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      artist.name,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.shelfCardBorderColor,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: AppTheme.textDisabled,
+                        size: 40,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${artist.songCount} 首歌曲',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
+                  ),
+                ),
+              ),
+
+              // 底部信息栏
+              Container(
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${artist.songCount} 首歌曲',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
+                    ),
+                    Icon(
+                      Icons.person,
+                      size: 14,
+                      color: AppTheme.textDisabled.withValues(alpha: 0.6),
                     ),
                   ],
                 ),
               ),
-              // 箭头
-              const Icon(Icons.chevron_right, color: AppTheme.textDisabled),
             ],
           ),
         ),

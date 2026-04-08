@@ -7,10 +7,10 @@ import '../theme/app_theme.dart';
 
 /// 顶部控制栏 - 负责窗口管理与视图历史导航
 class TopControlBar extends ConsumerWidget {
-  /// 侧边栏是否展开
+  /// 侧边栏是否展开（收起时显示展开按钮）
   final bool isSidebarExpanded;
 
-  /// 切换侧边栏状态的回调
+  /// 展开侧边栏的回调
   final VoidCallback onToggleSidebar;
 
   const TopControlBar({
@@ -34,12 +34,13 @@ class TopControlBar extends ConsumerWidget {
         color: AppTheme.backgroundColor,
         child: Row(
           children: [
-            // 侧边栏折叠/展开按钮
-            _buildIconButton(
-              icon: isSidebarExpanded ? Icons.menu_open : Icons.menu,
-              tooltip: isSidebarExpanded ? '收起侧边栏' : '展开侧边栏',
-              onPressed: onToggleSidebar,
-            ),
+            // 侧边栏收起时显示展开按钮
+            if (!isSidebarExpanded)
+              _buildIconButton(
+                icon: Icons.menu,
+                tooltip: '展开侧边栏',
+                onPressed: onToggleSidebar,
+              ),
 
             // 导航后退按钮
             _buildIconButton(
@@ -67,7 +68,7 @@ class TopControlBar extends ConsumerWidget {
             Expanded(
               child: Container(
                 height: 32,
-                constraints: const BoxConstraints(maxWidth: 400),
+                constraints: const BoxConstraints(maxWidth: 600),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: '搜索歌曲、专辑、艺术家...',
